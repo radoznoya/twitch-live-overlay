@@ -1,1 +1,191 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Twitch Live Stats</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 10px;
+    background: transparent;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+
+.overlay {
+    width: 230px;
+    padding: 14px 16px;
+    background: rgba(15, 15, 24, 0.88);
+    border: 1px solid rgba(160, 100, 255, 0.45);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: #c5a4ff;
+    font-weight: bold;
+}
+
+.live {
+    color: #ff5555;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 13px;
+}
+
+.label {
+    color: #b8b8c8;
+}
+
+.value {
+    font-weight: bold;
+    font-size: 15px;
+    color: white;
+    font-variant-numeric: tabular-nums;
+}
+
+#viewers {
+    color: #c5a4ff;
+}
+
+.footer {
+    text-align: center;
+    font-size: 9px;
+    color: #77778a;
+    margin-top: 8px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="overlay">
+
+    <div class="header">
+        <span>STREAM STATS</span>
+        <span class="live" id="status">● OFFLINE</span>
+    </div>
+
+    <div class="stat">
+        <span class="label">◉ Viewers</span>
+        <span class="value" id="viewers">--</span>
+    </div>
+
+    <div class="stat">
+        <span class="label">♥ Followers</span>
+        <span class="value" id="followers">--</span>
+    </div>
+
+    <div class="stat">
+        <span class="label">◷ Duration</span>
+        <span class="value" id="duration">00:00:00</span>
+    </div>
+
+    <div class="footer" id="connection">
+        Waiting for Twitch connection...
+    </div>
+
+</div>
+
+<script>
+// Backend URL will be added after Twitch setup.
+const API_URL = "BACKEND_URL_GOES_HERE";
+
+let streamStartedAt = null;
+
+function formatDuration(seconds) {
+    seconds = Math.max(0, Math.floor(seconds));
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    return [hours, minutes, secs]
+        .map(n => String(n).padStart(2, "0"))
+        .join(":");
+}
+
+async function updateStats() {
+    if (API_URL === "BACKEND_URL_GOES_HERE") {
+        document.getElementById("connection").textContent =
+            "Waiting for backend setup";
+        return;
+    }
+
+    try {
+        const response = await fetch(API_URL, {
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            throw new Error("API request failed");
+        }
+
+        const data = await response.json();
+
+        document.getElementById("viewers").textContent =
+            data.viewers ?? "--";
+
+        document.getElementById("followers").textContent =
+            data.followers ?? "--";
+
+        document.getElementById("status").textContent =
+            data.isLive ? "● LIVE" : "● OFFLINE";
+
+        if (data.isLive && data.startedAt) {
+            streamStartedAt = new Date(data.startedAt).getTime();
+        } else {
+            streamStartedAt = null;
+        }
+
+        document.getElementById("connection").textContent =
+            "Connected to Twitch";
+
+        updateTimer();
+
+    } catch (error) {
+        document.getElementById("connection").textContent =
+            "Connection unavailable";
+    }
+}
+
+function updateTimer() {
+    const duration = document.getElementById("duration");
+
+    if (!streamStartedAt) {
+        duration.textContent = "00:00:00";
+        return;
+    }
+
+    const seconds = (Date.now() - streamStartedAt) / 1000;
+    duration.textContent = formatDuration(seconds);
+}
+
+setInterval(updateStats, 15000);
+setInterval(updateTimer, 1000);
+
+updateStats();
+</script>
+
+</body>
+</html>
